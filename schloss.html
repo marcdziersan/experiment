@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Dreh-Zahlenschloss</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 60px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    .lock {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 30px;
+      perspective: 1000px;
+    }
+
+    .ring {
+      width: 60px;
+      height: 60px;
+      background: #222;
+      color: #0f0;
+      border: 2px solid #0f0;
+      border-radius: 10px;
+      font-size: 32px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transform-style: preserve-3d;
+      transition: transform 0.4s ease;
+      user-select: none;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      background: #0f0;
+      border: none;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .message {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔐 Zahlenschloss</h1>
+  <div class="lock" id="lock"></div>
+  <button onclick="checkCode()">Öffnen</button>
+  <div class="message" id="message"></div>
+
+  <script>
+    const correctCode = ['2','0','0','8','0']; // PIN geheim ;)
+    const currentValues = [0, 0, 0, 0, 0];
+
+    const lockDiv = document.getElementById('lock');
+
+    // Erzeuge 5 Ringe
+    for (let i = 0; i < 5; i++) {
+      const ring = document.createElement('div');
+      ring.className = 'ring';
+      ring.textContent = '0';
+      ring.dataset.index = i;
+      ring.dataset.rotate = 0;
+
+      ring.addEventListener('click', () => {
+        const index = parseInt(ring.dataset.index);
+        currentValues[index] = (currentValues[index] + 1) % 10;
+        ring.textContent = currentValues[index].toString();
+
+        // Drehwinkel aktualisieren
+        let newRotation = parseInt(ring.dataset.rotate) - 360;
+        ring.dataset.rotate = newRotation;
+        ring.style.transform = `rotateX(${newRotation}deg)`;
+      });
+
+      lockDiv.appendChild(ring);
+    }
+
+    function checkCode() {
+      const entered = currentValues.map(val => val.toString());
+      const isCorrect = entered.every((val, index) => val === correctCode[index]);
+
+      const msg = document.getElementById('message');
+      if (isCorrect) {
+        msg.innerHTML = "✅ Schloss geöffnet!";
+        msg.style.color = '#0f0';
+      } else {
+        msg.innerHTML = "❌ Falscher Code. Versuch es erneut.";
+        msg.style.color = '#f00';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wirtschaftssimulation V3</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="introScreen">
+    <button id="startButton">Spiel starten</button>
+  </div>
+
+  <div class="container hidden" id="gameUI">
+    <h1>🏰 Wirtschaftssimulation</h1>
+    <div id="messageBox" class="message"></div>
+    <div class="epoch">Epoche: <span id="era">Mittelalter</span></div>
+
+    <div class="tabs">
+      <button onclick="game.showTab('buildings', event)" class="tab active">🏗️ Gebäude</button>
+      <button onclick="game.showTab('workers', event)" class="tab">👷 Mitarbeiter</button>
+      <button onclick="game.showTab('upgrades', event)" class="tab">⚙️ Upgrades</button>
+      <button onclick="game.showTab('stats', event)" class="tab">📊 Statistik</button>
+    </div>
+
+    <div class="panel">
+      <p><strong>💰 Münzen:</strong> <span id="money">0</span></p>
+      <p><strong>🍞 Nahrung:</strong> <span id="food">0</span> / <span id="foodCap">100</span></p>
+      <p><strong>🪵 Holz:</strong> <span id="wood">0</span> / <span id="woodCap">100</span></p>
+      <p><strong>🍞 Brot:</strong> <span id="bread">0</span> / <span id="breadCap">50</span></p>
+      <p><strong>🪚 Bretter:</strong> <span id="planks">0</span> / <span id="plankCap">50</span></p>
+    </div>
+
+    <div id="buildings" class="tab-content">
+      <h2>🏗️ Gebäude kaufen</h2>
+      <button onclick="game.buyBuilding('farm')">Bauernhof (500)</button>
+      <button onclick="game.buyBuilding('lumber')">Holzfällerhütte (700)</button>
+      <button id="bakeryBtn" class="hidden" onclick="game.buyBuilding('bakery')">Bäckerei (1000)</button>
+      <button id="sawmillBtn" class="hidden" onclick="game.buyBuilding('sawmill')">Sägewerk (1200)</button>
+
+      <h2>💱 Ressourcen verkaufen</h2>
+      <button onclick="game.sellResource('food')">Nahrung verkaufen (50/Stück)</button>
+      <button onclick="game.sellResource('wood')">Holz verkaufen (75/Stück)</button>
+      <button onclick="game.sellResource('bread')">Brot verkaufen (120/Stück)</button>
+      <button onclick="game.sellResource('planks')">Bretter verkaufen (200/Stück)</button>
+    </div>
+
+    <div id="workers" class="tab-content hidden">
+      <h2>👷 Arbeiter einstellen</h2>
+      <button onclick="game.hireWorker('farm')">Bauer (200)</button>
+      <button onclick="game.hireWorker('lumber')">Holzfäller (250)</button>
+      <button id="bakerBtn" class="hidden" onclick="game.hireWorker('bakery')">Bäcker (400)</button>
+      <button id="sawmanBtn" class="hidden" onclick="game.hireWorker('sawmill')">Sägewerker (450)</button>
+    </div>
+
+    <div id="upgrades" class="tab-content hidden">
+      <h2>⚙️ Upgrades</h2>
+      <button onclick="game.buyUpgrade('fasterProduction')">Schnellere Produktion (1000)</button>
+      <button onclick="game.buyUpgrade('biggerStorage')">Lager erweitern (800)</button>
+      <button onclick="game.upgradeEra()">📜 Epoche: Renaissance (5000)</button>
+    </div>
+
+    <div id="stats" class="tab-content hidden">
+      <h2>📊 Statistik</h2>
+      <p>Epoche: <span id="eraStat">Mittelalter</span></p>
+      <p>Bauernhöfe: <span id="farmCount">0</span></p>
+      <p>Holzfällerhütten: <span id="lumberCount">0</span></p>
+      <p>Bäckereien: <span id="bakeryCount">0</span></p>
+      <p>Sägewerke: <span id="sawmillCount">0</span></p>
+    </div>
+
+    <div class="center">
+      <button onclick="game.resetGame()">🔄 Spiel zurücksetzen</button>
+    </div>
+  </div>
+
+  <script>
+    class Game {
+      constructor() {
+        this.state = JSON.parse(localStorage.getItem("gameState")) || this.defaultState();
+        this.loop = null;
+      }
+
+      defaultState() {
+        return {
+          money: 1000,
+          food: 0,
+          wood: 0,
+          bread: 0,
+          planks: 0,
+          farms: 0,
+          lumbers: 0,
+          bakeries: 0,
+          sawmills: 0,
+          era: "Mittelalter",
+          foodCap: 100,
+          woodCap: 100,
+          breadCap: 50,
+          plankCap: 50,
+          productionInterval: 5000,
+          workers: { farm: 0, lumber: 0, bakery: 0, sawmill: 0 }
+        };
+      }
+
+      start() {
+        document.getElementById("introScreen").style.display = "none";
+        document.getElementById("gameUI").classList.remove("hidden");
+        this.loop = setInterval(() => this.produce(), this.state.productionInterval);
+        setInterval(() => localStorage.setItem("gameState", JSON.stringify(this.state)), 2000);
+        this.update();
+      }
+
+      update() {
+        const s = this.state;
+        const $ = id => document.getElementById(id);
+        $("money").textContent = s.money;
+        $("food").textContent = s.food;
+        $("wood").textContent = s.wood;
+        $("bread").textContent = s.bread;
+        $("planks").textContent = s.planks;
+        $("foodCap").textContent = s.foodCap;
+        $("woodCap").textContent = s.woodCap;
+        $("breadCap").textContent = s.breadCap;
+        $("plankCap").textContent = s.plankCap;
+        $("farmCount").textContent = s.farms;
+        $("lumberCount").textContent = s.lumbers;
+        $("bakeryCount").textContent = s.bakeries;
+        $("sawmillCount").textContent = s.sawmills;
+        $("era").textContent = s.era;
+        $("eraStat").textContent = s.era;
+        ["bakeryBtn", "sawmillBtn", "bakerBtn", "sawmanBtn"].forEach(id =>
+          $(id).classList.toggle("hidden", s.era !== "Renaissance")
+        );
+      }
+
+      showMessage(text) {
+        const box = document.getElementById("messageBox");
+        box.textContent = text;
+        setTimeout(() => box.textContent = "", 3000);
+      }
+
+      showTab(id, event) {
+        document.querySelectorAll(".tab-content").forEach(div => div.classList.add("hidden"));
+        document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+        document.getElementById(id).classList.remove("hidden");
+        event.target.classList.add("active");
+      }
+
+      buyBuilding(type) {
+        const costs = { farm: 500, lumber: 700, bakery: 1000, sawmill: 1200 };
+        if (this.state.money >= costs[type]) {
+          this.state.money -= costs[type];
+          if (type === "bakery") this.state.bakeries++;
+          else if (type === "sawmill") this.state.sawmills++;
+          else this.state[type + "s"]++;
+          this.showMessage(`${type} gebaut!`);
+          this.update();
+        }
+      }
+
+      hireWorker(type) {
+        const costs = { farm: 200, lumber: 250, bakery: 400, sawmill: 450 };
+        if (this.state.money >= costs[type]) {
+          this.state.money -= costs[type];
+          this.state.workers[type]++;
+          this.showMessage(`${type} eingestellt!`);
+          this.update();
+        }
+      }
+
+      sellResource(type) {
+        const rates = { food: 50, wood: 75, bread: 120, planks: 200 };
+        if (this.state[type] > 0) {
+          const value = this.state[type] * rates[type];
+          this.state.money += value;
+          this.state[type] = 0;
+          this.showMessage(`${type} verkauft für ${value} Münzen`);
+          this.update();
+        }
+      }
+
+      buyUpgrade(type) {
+        if (type === "fasterProduction" && this.state.money >= 1000 && this.state.productionInterval > 1000) {
+          this.state.money -= 1000;
+          this.state.productionInterval -= 1000;
+          clearInterval(this.loop);
+          this.loop = setInterval(() => this.produce(), this.state.productionInterval);
+          this.showMessage("⚙️ Produktion beschleunigt!");
+        } else if (type === "biggerStorage" && this.state.money >= 800) {
+          this.state.money -= 800;
+          this.state.foodCap += 100;
+          this.state.woodCap += 100;
+          this.state.breadCap += 25;
+          this.state.plankCap += 25;
+          this.showMessage("📦 Lager erweitert!");
+        }
+        this.update();
+      }
+
+      upgradeEra() {
+        if (this.state.era === "Mittelalter" && this.state.money >= 5000) {
+          this.state.money -= 5000;
+          this.state.era = "Renaissance";
+          this.showMessage("📜 Willkommen in der Renaissance!");
+          this.update();
+        }
+      }
+
+      produce() {
+        const s = this.state;
+        s.food = Math.min(s.food + s.farms + s.workers.farm, s.foodCap);
+        s.wood = Math.min(s.wood + s.lumbers + s.workers.lumber, s.woodCap);
+        if (s.era === "Renaissance") {
+          s.bread = Math.min(s.bread + s.bakeries + s.workers.bakery, s.breadCap);
+          s.planks = Math.min(s.planks + s.sawmills + s.workers.sawmill, s.plankCap);
+        }
+        this.update();
+      }
+
+      resetGame() {
+        if (confirm("Wirklich alles zurücksetzen?")) {
+          localStorage.removeItem("gameState");
+          location.reload();
+        }
+      }
+    }
+
+    const game = new Game();
+    document.getElementById("startButton").addEventListener("click", () => game.start());
+  </script>
+</body>
+</html>
